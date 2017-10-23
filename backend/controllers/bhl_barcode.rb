@@ -21,4 +21,14 @@ class ArchivesSpaceService < Sinatra::Base
     json_response(BHLBarcode.find_by_barcode(Location, {:barcode => params[:barcode]}))
   end
 
+  Endpoint.get('/repositories/:repo_id/containers_for_resource/:id')
+    .description("Get Top Container info for a Resource")
+    .params(["repo_id", :repo_id],
+            ["id", :id])
+    .permissions([:view_repository])
+    .returns([200, "Container Info"]) \
+  do
+    json_response(BHLBarcode.containers_for_resource(params[:id]))
+  end
+
 end
