@@ -22,24 +22,23 @@ class BHLBarcode
     resource_instance_ids.each do |instance_id|
       instance_metadata = Instance.filter(Sequel.qualify(:instance, :id) => instance_id).
                           left_outer_join(:archival_object, Sequel.qualify(:archival_object, :id) => Sequel.qualify(:instance, :archival_object_id)).
-                          left_outer_join(:sub_container, :instance_id => Sequel.qualify(:instance, :id)).
+                          left_outer_join(:sub_container, :instance_id => instance_id).
                           left_outer_join(:top_container_link_rlshp, :sub_container_id => Sequel.qualify(:sub_container, :id)).
                           left_outer_join(:top_container, :id => Sequel.qualify(:top_container_link_rlshp, :top_container_id)).
-                          left_outer_join(:extent, :archival_object_id => Sequel.qualify(:archival_object, :id)).
                           select(
                             Sequel.qualify(:instance, :archival_object_id).as(:archival_object_id),
-                            Sequel.as(Sequel.lit('GROUP_CONCAT(CONCAT(extent.number, " ", GetEnumValue(extent.extent_type_id)) SEPARATOR "; ")'), :extents),
                             Sequel.qualify(:archival_object, :display_string).as(:display_string),
                             Sequel.as(Sequel.lit('GetEnumValue(instance.instance_type_id)'), :instance_type),
-                            Sequel.qualify(:top_container, :id).as(:top_container_id),
                             Sequel.qualify(:top_container, :indicator).as(:top_container_indicator),
-                            Sequel.as(Sequel.lit('GetEnumValue(top_container.type_id)'), :container_type)
-                          ).first
+                          ).
+                          group(Sequel.qualify(:instance, :id), Sequel.qualify(:top_container, :id)).
+                          first
 
+      display_string = instance_metadata[:display_string]
       instance_type = instance_metadata[:instance_type]
       container_indicator = instance_metadata[:top_container_indicator]
-      display_string = instance_metadata[:display_string]
-      extents = instance_metadata[:extents]
+      archival_object_id = instance_metadata[:archival_object_id]
+
       if not container_info.include?(instance_type)
         container_info[instance_type] = {}
       end
@@ -48,25 +47,31 @@ class BHLBarcode
         container_info[instance_type][container_indicator] = []
       end
 
-      hierarchy_parts = []
-      archival_object_id = instance_metadata[:archival_object_id]
+      extent_metadata = Extent.filter(:archival_object_id => archival_object_id).
+                        select(
+                          Sequel.as(Sequel.lit('GROUP_CONCAT(CONCAT(extent.number, " ", GetEnumValue(extent.extent_type_id)) SEPARATOR "; ")'), :extents)
+                        ).first
+      extents = extent_metadata[:extents]
 
+      hierarchy_parts = []
       while archival_object_id
-        if ids_to_titles.include?(archival_object_id)
-          title = ids_to_titles[archival_object_id]
+        if ids_to_parents.include?(archival_object_id)
           parent_id = ids_to_parents[archival_object_id]
         else
-          title = ArchivalObject[:id => archival_object_id][:display_string]
           parent_id = ArchivalObject[:id => archival_object_id][:parent_id]
-          ids_to_titles[archival_object_id] = title
           ids_to_parents[archival_object_id] = parent_id
         end
-
-        hierarchy_parts.push(title)
 
         if parent_id.nil?
           archival_object_id = false
         else
+          if ids_to_titles.include?(parent_id)
+            parent_display_string = ids_to_titles[parent_id]
+          else
+            parent_display_string = ArchivalObject[:id => parent_id][:display_string]
+            ids_to_titles[parent_id] = parent_display_string
+          end
+          hierarchy_parts.push(parent_display_string)
           archival_object_id = parent_id
         end
       end
