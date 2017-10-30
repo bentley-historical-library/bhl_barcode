@@ -31,4 +31,14 @@ class ArchivesSpaceService < Sinatra::Base
     json_response(BHLBarcode.containers_for_resource(params[:id]))
   end
 
+  Endpoint.get('/repositories/:repo_id/metadata_for_container/:id')
+    .description("Get Top Container info for a Resource")
+    .params(["repo_id", :repo_id],
+            ["id", :id])
+    .permissions([:view_repository])
+    .returns([200, "Container Metadata"]) \
+  do
+    json_response(BHLBarcode.metadata_for_container(params[:id], params[:repo_id]))
+  end
+
 end
