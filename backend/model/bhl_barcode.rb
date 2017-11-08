@@ -10,7 +10,7 @@ class BHLBarcode
   def self.metadata_for_container(container_id, repo_id)
     ids_to_titles = {}
     ids_to_parents = {}
-    archival_objects = {"archival_objects" => []}
+    archival_objects = []
 
     container_instance_ids = TopContainer.filter(Sequel.qualify(:top_container, :id) => container_id).
                     left_outer_join(:top_container_link_rlshp, Sequel.qualify(:top_container_link_rlshp, :top_container_id) => Sequel.qualify(:top_container, :id)).
@@ -102,10 +102,10 @@ class BHLBarcode
                                   "general_note" => general_note,
                                   "physfacet_note" => physfacet_note}
 
-      archival_objects["archival_objects"].push(archival_object_metadata)
+      archival_objects << archival_object_metadata
     end
 
-    archival_objects
+    {"archival_objects" => archival_objects}
   end
 
 
@@ -118,7 +118,8 @@ class BHLBarcode
                     Sequel.qualify(:instance, :id).as(:instance_id)
                   ).map(:instance_id)
 
-    containers_info = {"containers" => []}
+    containers = []
+    seen_ids = []
 
     resource_instance_ids.each do |instance_id|
       instance_metadata = Instance.filter(Sequel.qualify(:instance, :id) => instance_id).
@@ -133,15 +134,20 @@ class BHLBarcode
                           ).
                           group(Sequel.qualify(:instance, :id), Sequel.qualify(:top_container, :id)).
                           first
-      container_info = {}
-      container_info["id"] = instance_metadata[:top_container_id]
-      container_info["indicator"] = instance_metadata[:top_container_indicator]
-      container_info["container_type"] = instance_metadata[:top_container_type]
-      container_info["instance_type"] = instance_metadata[:instance_type]
-      containers_info["containers"].push(container_info)
+      
+      top_container_id = instance_metadata[:top_container_id]
+      if !seen_ids.include?(top_container_id)
+        container_info = {}
+        container_info["id"] = top_container_id
+        container_info["indicator"] = instance_metadata[:top_container_indicator]
+        container_info["container_type"] = instance_metadata[:top_container_type]
+        container_info["instance_type"] = instance_metadata[:instance_type]
+        containers << container_info
+        seen_ids << top_container_id
+      end
 
     end
 
-    containers_info
+    {"containers" => containers}
   end
 end
