@@ -10,7 +10,7 @@ class BHLBarcode
   def self.metadata_for_container(container_id, repo_id)
     ids_to_titles = {}
     ids_to_parents = {}
-    container_info = []
+    archival_objects = {"archival_objects" => []}
 
     container_instance_ids = TopContainer.filter(Sequel.qualify(:top_container, :id) => container_id).
                     left_outer_join(:top_container_link_rlshp, Sequel.qualify(:top_container_link_rlshp, :top_container_id) => Sequel.qualify(:top_container, :id)).
@@ -41,18 +41,17 @@ class BHLBarcode
 
       notes = Note.filter(:archival_object_id => archival_object_id).
               select(
-                Sequel.as(Sequel.lit('JSON_EXTRACT(CONVERT(notes using utf8), "$.type")'), :note_type),
-                Sequel.as(Sequel.lit('JSON_EXTRACT(CONVERT(notes using utf8), "$.subnotes[0].content")'), :multipart_note_content),
-                Sequel.as(Sequel.lit('JSON_EXTRACT(CONVERT(notes using utf8), "$.content[0]")'), :singlepart_note_content)
+                Sequel.qualify(:note, :notes)
               ).all
 
       general_note = ""
       physfacet_note = ""
       notes.each do |note|
-        if note[:note_type] == '"odd"'
-          general_note = note[:multipart_note_content]
-        elsif note[:note_type] == '"physfacet"'
-          physfacet_note = note[:singlepart_note_content]
+        parsed_note = JSON.parse(note[:notes])
+        if parsed_note["type"] == "odd"
+          general_note = parsed_note["subnotes"][0]["content"]
+        elsif parsed_note["type"] == "physfacet"
+          physfacet_note = parsed_note["content"][0]
         end
       end
 
@@ -103,10 +102,10 @@ class BHLBarcode
                                   "general_note" => general_note,
                                   "physfacet_note" => physfacet_note}
 
-      container_info.push(archival_object_metadata)
+      archival_objects["archival_objects"].push(archival_object_metadata)
     end
 
-    container_info
+    archival_objects
   end
 
 
@@ -119,7 +118,7 @@ class BHLBarcode
                     Sequel.qualify(:instance, :id).as(:instance_id)
                   ).map(:instance_id)
 
-    container_info = {}
+    containers_info = {"containers" => []}
 
     resource_instance_ids.each do |instance_id|
       instance_metadata = Instance.filter(Sequel.qualify(:instance, :id) => instance_id).
@@ -128,29 +127,21 @@ class BHLBarcode
                           left_outer_join(:top_container, :id => Sequel.qualify(:top_container_link_rlshp, :top_container_id)).
                           select(
                             Sequel.as(Sequel.lit('GetEnumValue(instance.instance_type_id)'), :instance_type),
+                            Sequel.as(Sequel.lit('GetEnumValue(top_container.type_id)'), :top_container_type),
                             Sequel.qualify(:top_container, :indicator).as(:top_container_indicator),
                             Sequel.qualify(:top_container, :id).as(:top_container_id)
                           ).
                           group(Sequel.qualify(:instance, :id), Sequel.qualify(:top_container, :id)).
                           first
+      container_info = {}
+      container_info["id"] = instance_metadata[:top_container_id]
+      container_info["indicator"] = instance_metadata[:top_container_indicator]
+      container_info["container_type"] = instance_metadata[:top_container_type]
+      container_info["instance_type"] = instance_metadata[:instance_type]
+      containers_info["containers"].push(container_info)
 
-      top_container_id = instance_metadata[:top_container_id]
-      top_container_indicator = instance_metadata[:top_container_indicator]
-      instance_type = instance_metadata[:instance_type]
-
-      if not container_info.include?(instance_type)
-        container_info[instance_type] = {}
-      end
-
-      if not container_info[instance_type].include?(top_container_indicator)
-        container_info[instance_type][top_container_indicator] = []
-      end
-
-      if not container_info[instance_type][top_container_indicator].include?(top_container_id)
-        container_info[instance_type][top_container_indicator].push(top_container_id)
-      end
     end
 
-    container_info
+    containers_info
   end
 end
