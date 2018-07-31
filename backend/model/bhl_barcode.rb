@@ -20,6 +20,7 @@ class BHLBarcode
                   Sequel.qualify(:archival_object, :id).as(:archival_object_id),
                   Sequel.qualify(:top_container, :id).as(:top_container_id),
                   Sequel.qualify(:top_container, :barcode).as(:container_barcode),
+                  Sequel.qualify(:location, :building).as(:building),
                   Sequel.qualify(:location, :barcode).as(:location_barcode)
                 ).first
 
@@ -27,6 +28,7 @@ class BHLBarcode
     archival_object_id = archival_object_metadata[:archival_object_id]
     top_container_id = archival_object_metadata[:top_container_id]
     container_barcode = archival_object_metadata[:container_barcode]
+    building = archival_object_metadata[:building]
     location_barcode = archival_object_metadata[:location_barcode]
     archival_object_link = "/resources/#{resource_id}#tree::archival_object_#{archival_object_id}"
     if !top_container_id.nil?
@@ -35,7 +37,7 @@ class BHLBarcode
       top_container_link = nil
     end
 
-    {"archival_object_link" => archival_object_link, "top_container_link" => top_container_link, "container_barcode" => container_barcode, "location" => location_barcode}
+    {"archival_object_link" => archival_object_link, "top_container_link" => top_container_link, "container_barcode" => container_barcode, "building" => building, "location" => location_barcode}
   end
 
   def self.metadata_for_container(container_id, repo_id)
