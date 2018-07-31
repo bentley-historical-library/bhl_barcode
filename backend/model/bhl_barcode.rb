@@ -7,6 +7,37 @@ class BHLBarcode
       end
   end
 
+  def self.aeon_lookup(repo_id, ref_id)
+    archival_object_metadata = ArchivalObject.filter(:ref_id => ref_id).
+                left_outer_join(:instance, Sequel.qualify(:instance, :archival_object_id) => Sequel.qualify(:archival_object, :id)).
+                left_outer_join(:sub_container, Sequel.qualify(:sub_container, :instance_id) => Sequel.qualify(:instance, :id)).
+                left_outer_join(:top_container_link_rlshp, :sub_container_id => Sequel.qualify(:sub_container, :id)).
+                left_outer_join(:top_container, Sequel.qualify(:top_container, :id) => Sequel.qualify(:top_container_link_rlshp, :top_container_id)).
+                left_outer_join(:top_container_housed_at_rlshp, Sequel.qualify(:top_container_housed_at_rlshp, :top_container_id) => Sequel.qualify(:top_container, :id)).
+                left_outer_join(:location, Sequel.qualify(:location, :id) => Sequel.qualify(:top_container_housed_at_rlshp, :location_Id)).
+                select(
+                  Sequel.qualify(:archival_object, :root_record_id).as(:resource_id),
+                  Sequel.qualify(:archival_object, :id).as(:archival_object_id),
+                  Sequel.qualify(:top_container, :id).as(:top_container_id),
+                  Sequel.qualify(:top_container, :barcode).as(:container_barcode),
+                  Sequel.qualify(:location, :barcode).as(:location_barcode)
+                ).first
+
+    resource_id = archival_object_metadata[:resource_id]
+    archival_object_id = archival_object_metadata[:archival_object_id]
+    top_container_id = archival_object_metadata[:top_container_id]
+    container_barcode = archival_object_metadata[:container_barcode]
+    location_barcode = archival_object_metadata[:location_barcode]
+    archival_object_link = "/resources/#{resource_id}#tree::archival_object_#{archival_object_id}"
+    if !top_container_id.nil?
+      top_container_link = "/top_containers/#{top_container_id}"
+    else
+      top_container_link = nil
+    end
+
+    {"archival_object_link" => archival_object_link, "top_container_link" => top_container_link, "container_barcode" => container_barcode, "location" => location_barcode}
+  end
+
   def self.metadata_for_container(container_id, repo_id)
     ids_to_titles = {}
     ids_to_parents = {}
