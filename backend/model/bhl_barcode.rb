@@ -14,18 +14,29 @@ class BHLBarcode
                 left_outer_join(:top_container_link_rlshp, :sub_container_id => Sequel.qualify(:sub_container, :id)).
                 left_outer_join(:top_container, Sequel.qualify(:top_container, :id) => Sequel.qualify(:top_container_link_rlshp, :top_container_id)).
                 left_outer_join(:top_container_housed_at_rlshp, Sequel.qualify(:top_container_housed_at_rlshp, :top_container_id) => Sequel.qualify(:top_container, :id)).
-                left_outer_join(:location, Sequel.qualify(:location, :id) => Sequel.qualify(:top_container_housed_at_rlshp, :location_Id)).
+                left_outer_join(:location, Sequel.qualify(:location, :id) => Sequel.qualify(:top_container_housed_at_rlshp, :location_id)).
                 select(
                   Sequel.qualify(:archival_object, :root_record_id).as(:resource_id),
+                  Sequel.qualify(:archival_object, :parent_id).as(:parent_id),
                   Sequel.qualify(:archival_object, :id).as(:archival_object_id),
                   Sequel.qualify(:top_container, :id).as(:top_container_id),
                   Sequel.qualify(:top_container, :barcode).as(:container_barcode),
                   Sequel.qualify(:location, :building).as(:building),
                   Sequel.qualify(:location, :barcode).as(:location_barcode)
                 ).first
+    
+    archival_object_id = archival_object_metadata[:archival_object_id]
+    parent_id = archival_object_metadata[:parent_id]
+    ids_to_check = [archival_object_id]    
+    while !parent_id.nil?
+      ids_to_check << parent_id
+      parent_id = ArchivalObject[:id => parent_id][:parent_id]
+    end
+    
+    restrictions = Note.filter(:archival_object_id => ids_to_check).where(Sequel.lit('notes like "%accessrestrict%"'))
+    accessrestrict = (restrictions.count > 0) ? true : false
 
     resource_id = archival_object_metadata[:resource_id]
-    archival_object_id = archival_object_metadata[:archival_object_id]
     top_container_id = archival_object_metadata[:top_container_id]
     container_barcode = archival_object_metadata[:container_barcode]
     building = archival_object_metadata[:building]
@@ -37,7 +48,7 @@ class BHLBarcode
       top_container_link = nil
     end
 
-    {"archival_object_link" => archival_object_link, "top_container_link" => top_container_link, "container_barcode" => container_barcode, "building" => building, "location" => location_barcode}
+    {"archival_object_link" => archival_object_link, "top_container_link" => top_container_link, "container_barcode" => container_barcode, "building" => building, "location" => location_barcode, "accessrestrict" => accessrestrict}
   end
 
   def self.metadata_for_container(container_id, repo_id)
