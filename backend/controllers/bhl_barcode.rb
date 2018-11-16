@@ -32,7 +32,7 @@ class ArchivesSpaceService < Sinatra::Base
   end
 
   Endpoint.get('/repositories/:repo_id/metadata_for_container/:id')
-    .description("Get metadata for a Top Container")
+    .description("Get descriptive metadata associated with a Top Container")
     .params(["repo_id", :repo_id],
             ["id", :id])
     .permissions([:view_repository])
