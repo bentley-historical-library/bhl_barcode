@@ -16,7 +16,7 @@ This ArchivesSpace plugin adds functionality for various aspects of the Bentley 
 ## How it Works
 The backend modifications include several API endpoints, defined in `backend/controllers/bhl_barcode.rb`, which return information based on certain parameters. Each API endpoint calls a function of the `BHLBarcode` class, defined in `backend/model/bhl_barcode.rb`, which interacts with the ArchivesSpace database. The API endpoints are defined in detail below.
 
-The HTML template at `frontend/views/top_containers/bulk_operations/_results.html.erb` overrides the default template for search results displayed by the ArchivesSpace Manage Top Containers functionality. The customization modifies the default template by adding a column for the container type and by hiding the columns "ILS Holding ID" and "Exported to ILS." This file should be compared against the default template in the ArchivesSpace repository for each new ArchivesSpace release.
+The HTML template at `frontend/views/top_containers/bulk_operations/_results.html.erb` overrides the default template for search results displayed by the ArchivesSpace Manage Top Containers functionality. The customization modifies the default template by hiding the columns "ILS Holding ID" and "Exported to ILS." This file should be compared against the default template in the ArchivesSpace repository for each new ArchivesSpace release.
 
 ## API Endpoints
 
