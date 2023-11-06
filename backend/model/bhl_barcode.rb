@@ -72,7 +72,7 @@ class BHLBarcode
                           select(
                             Sequel.qualify(:instance, :archival_object_id).as(:archival_object_id),
                             Sequel.qualify(:archival_object, :display_string).as(:display_string),
-                            Sequel.as(Sequel.lit('GetEnumValue(instance.instance_type_id)'), :instance_type),
+                            Sequel.as(Sequel.lit('BHL_GetEnumValue(instance.instance_type_id)'), :instance_type),
                             Sequel.qualify(:top_container, :indicator).as(:top_container_indicator),
                           ).
                           group(Sequel.qualify(:instance, :id), Sequel.qualify(:top_container, :id)).
@@ -102,7 +102,7 @@ class BHLBarcode
       extents = Extent.filter(:archival_object_id => archival_object_id).
                 select(
                   Sequel.qualify(:extent, :number).as(:number),
-                  Sequel.as(Sequel.lit('GetEnumValue(extent.extent_type_id)'), :extent_type),
+                  Sequel.as(Sequel.lit('BHL_GetEnumValue(extent.extent_type_id)'), :extent_type),
                   Sequel.qualify(:extent, :physical_details).as(:physfacet)
                 ).all
 
@@ -157,7 +157,7 @@ class BHLBarcode
   def self.containers_for_resource(resource_id)
     resource_instance_ids = ArchivalObject.filter(:root_record_id => resource_id).
                   join(:instance, :archival_object_id => Sequel.qualify(:archival_object, :id)).
-                  where(Sequel.lit('GetEnumValue(instance.instance_type_id) != "digital_object"')).
+                  where(Sequel.lit('BHL_GetEnumValue(instance.instance_type_id) != "digital_object"')).
                   select(
                     Sequel.qualify(:instance, :id).as(:instance_id)
                   ).map(:instance_id)
@@ -171,8 +171,8 @@ class BHLBarcode
                           left_outer_join(:top_container_link_rlshp, :sub_container_id => Sequel.qualify(:sub_container, :id)).
                           left_outer_join(:top_container, :id => Sequel.qualify(:top_container_link_rlshp, :top_container_id)).
                           select(
-                            Sequel.as(Sequel.lit('GetEnumValue(instance.instance_type_id)'), :instance_type),
-                            Sequel.as(Sequel.lit('GetEnumValue(top_container.type_id)'), :top_container_type),
+                            Sequel.as(Sequel.lit('BHL_GetEnumValue(instance.instance_type_id)'), :instance_type),
+                            Sequel.as(Sequel.lit('BHL_GetEnumValue(top_container.type_id)'), :top_container_type),
                             Sequel.qualify(:top_container, :indicator).as(:top_container_indicator),
                             Sequel.qualify(:top_container, :id).as(:top_container_id)
                           ).
